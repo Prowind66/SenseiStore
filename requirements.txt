@@ -1,0 +1,11 @@
+blinker==1.9.0
+click==8.1.8
+colorama==0.4.6
+Flask==3.1.0
+itsdangerous==2.2.0
+Jinja2==3.1.6
+MarkupSafe==3.0.2
+numpy==2.2.3
+opencv-python==4.11.0.86
+Werkzeug==3.1.3
+# RPi.GPIO==0.7.1 # This is only for raspberry pi OS If not you will crash when installing this package on windows
