@@ -89,8 +89,17 @@ try:
                 results = face_model(frame)
                 for result in results:
                     for box in result.boxes:
+                        h, w, _ = frame.shape
+                        margin = 30
                         x1, y1, x2, y2 = map(int, box.xyxy[0])
-                        face_crop = frame[y1:y2, x1:x2]
+
+                         # Apply 30-pixel margin with bounds checking
+                        x1m = max(x1 - margin, 0)
+                        y1m = max(y1 - margin, 0)
+                        x2m = min(x2 + margin, w)
+                        y2m = min(y2 + margin, h)
+
+                        face_crop = frame[y1m:y2m, x1m:x2m]
 
                         if face_crop.shape[0] > 30 and face_crop.shape[1] > 30:
                             try:
