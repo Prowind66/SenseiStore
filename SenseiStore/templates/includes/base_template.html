@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-
     <title>
       {% block title %}
       {% endblock %}
@@ -20,13 +19,14 @@
 
     <!-- Own Css -->
     <link rel="stylesheet" href="{{ url_for('static', filename='styles/main.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles/chatbot.css') }}" />
+    <!-- <link rel="stylesheet" href="{{ url_for('static', filename='styles/chatbot.css') }}" /> -->
     <!-- Own Javascript -->
     <script src="{{ url_for('static', filename='javascript/main.js') }}"></script>
 
     <!-- jQuery -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-
+    
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
     <!-- Chartjs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     {% block head %}

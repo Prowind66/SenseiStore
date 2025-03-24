@@ -7,7 +7,26 @@
 
 {% block body %}
 
+<h1>📡 Real-time Face Emotion</h1>
+    <p><strong>Timestamp:</strong> <span id="timestamp">...</span></p>
+    <p><strong>Emotion:</strong> <span id="emotion">...</span></p>
+    <p><strong>Bounding Box:</strong> <span id="bbox">...</span></p>
+    <img id="face-img" src="" alt="Face Image"/>
 
+    <script>
+        const socket = io();
 
+        socket.on('mqtt_message', (data) => {
+            console.log("🔔 MQTT Data received:", data);
+            document.getElementById('timestamp').textContent = data.timestamp;
+            document.getElementById('emotion').textContent = data.emotion;
+            document.getElementById('bbox').textContent = data.bounding_box;
+
+            // Show face image
+            if (data.image_b64) {
+                document.getElementById('face-img').src = "data:image/jpeg;base64," + data.image_b64;
+            }
+        });
+    </script>
 
 {% endblock %}
