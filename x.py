@@ -10,15 +10,45 @@ from ultralytics import YOLO
 from deepface import DeepFace
 import paho.mqtt.client as mqtt
 from paho.mqtt.client import CallbackAPIVersion
-from gpiozero import DistanceSensor
+import os
+os.environ["DEEPFACE_HOME"] = os.path.abspath(".")  # Set root directory as model path
+os.path.join(os.environ["DEEPFACE_HOME"], "weights", "retinaface.h5")
 
 class UltrasonicSensor:
     def __init__(self, trig_pin, echo_pin):
-        self.sensor = DistanceSensor(echo=echo_pin, trigger=trig_pin,max_distance=2)
-    
+        self.trig = trig_pin
+        self.echo = echo_pin
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setup(self.trig, GPIO.OUT)
+        GPIO.setup(self.echo, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+
     def measure_distance(self):
-        dist_cm = self.sensor.distance * 100  # Convert to cm
-        return round(dist_cm, 2)
+        GPIO.output(self.trig, False)
+        time.sleep(0.05)
+        GPIO.output(self.trig, True)
+        time.sleep(0.00001)
+        GPIO.output(self.trig, False)
+
+        timeout_start = time.time()
+        pulse_start = None
+        while GPIO.input(self.echo) == 0:
+            pulse_start = time.time()
+            if (time.time() - timeout_start) > 0.02:
+                return None
+
+        timeout_start = time.time()
+        pulse_end = None
+        while GPIO.input(self.echo) == 1:
+            pulse_end = time.time()
+            if (time.time() - timeout_start) > 0.02:
+                return None
+
+        if pulse_start is None or pulse_end is None:
+            return None
+
+        pulse_duration = pulse_end - pulse_start
+        distance = (pulse_duration * 34300) / 2
+        return round(distance, 2)
 
 class EmotionDetector:
     def __init__(self):
@@ -75,7 +105,7 @@ class EmotionDetector:
                             emotion_analysis = DeepFace.analyze(
                                 face_crop,
                                 actions=['emotion'],
-                                detector_backend='skip',
+                                detector_backend='retinaface',
                                 enforce_detection=True,
                             )
                             emotion = emotion_analysis[0]['dominant_emotion']
@@ -118,7 +148,7 @@ class EmotionDetector:
                         self.cap.release()
                         self.cap = None
                         self.running_flag[0] = True
-                time.sleep(0.4)
+
         except KeyboardInterrupt:
             print("Interrupted by user.")
 

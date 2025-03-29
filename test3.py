@@ -9,7 +9,7 @@ from deepface import DeepFace
 import paho.mqtt.client as mqtt
 from paho.mqtt.client import CallbackAPIVersion
 
-import base64  # <-- We need this for base64 encoding the image
+import base64  # For base64 encoding the image
 
 # ============================= GPIO SETUP ============================= #
 TRIG = 23  # GPIO 23 (Pin 16)
@@ -20,32 +20,40 @@ GPIO.setup(TRIG, GPIO.OUT)
 GPIO.setup(ECHO, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
 def measure_distance():
-    """Return distance in centimeters or an error string on timeout."""
-    # Reset Echo pin
-    GPIO.setup(ECHO, GPIO.OUT)
-    GPIO.output(ECHO, False)
-    time.sleep(0.1)
-    GPIO.setup(ECHO, GPIO.IN)
+    """
+    Return distance in centimeters, or None on timeout.
+    """
+    # Let the sensor settle
+    GPIO.output(TRIG, False)
+    time.sleep(0.05)
 
     # Trigger sensor
     GPIO.output(TRIG, True)
     time.sleep(0.00001)  # 10 microseconds
     GPIO.output(TRIG, False)
 
+    # Wait for ECHO to go HIGH
     timeout_start = time.time()
+    pulse_start = None
     while GPIO.input(ECHO) == 0:
         pulse_start = time.time()
-        if (time.time() - timeout_start) > 0.02:
-            return "Timeout waiting for Echo HIGH"
+        if (time.time() - timeout_start) > 0.02:  # ~ 20ms
+            return None  # Timeout => return None
 
+    # Wait for ECHO to go LOW
     timeout_start = time.time()
+    pulse_end = None
     while GPIO.input(ECHO) == 1:
         pulse_end = time.time()
-        if (time.time() - timeout_start) > 0.02:
-            return "Timeout waiting for Echo LOW"
+        if (time.time() - timeout_start) > 0.02:  # ~ 20ms
+            return None  # Timeout => return None
 
+    if pulse_start is None or pulse_end is None:
+        return None  # Safety check
+
+    # Calculate distance in cm (speed of sound ~34300 cm/s)
     pulse_duration = pulse_end - pulse_start
-    distance = (pulse_duration * 34300) / 2  # Speed of sound = 34300 cm/s
+    distance = (pulse_duration * 34300) / 2
     return round(distance, 2)
 
 # ============================= MQTT SETUP ============================= #
@@ -67,16 +75,16 @@ cap = None  # We'll open/close this dynamically
 try:
     while True:
         dist = measure_distance()
-
-        if isinstance(dist, str):
-            print(f"Ultrasonic Error: {dist}")
-            time.sleep(1)
+        if dist is None:
+            # Sensor timed out or gave invalid reading
+            print("Ultrasonic Error: Timeout/Invalid reading.")
+            time.sleep(1)  # Wait a bit and then try again
             continue
 
         print(f"Distance: {dist} cm")
 
         if dist < THRESHOLD_DISTANCE:
-            # Person is close; ensure camera is ON
+            # Something is close; ensure camera is ON
             if cap is None:
                 print("Person detected. Opening camera...")
                 cap = cv2.VideoCapture(0)
@@ -85,15 +93,19 @@ try:
             if not ret:
                 print("⚠️ Error: Could not read from camera.")
             else:
-                # 1) YOLO Face Detection
+                # ==================== YOLO Face Detection ==================== #
                 results = face_model(frame)
                 for result in results:
                     for box in result.boxes:
                         h, w, _ = frame.shape
-                        margin = 30
                         x1, y1, x2, y2 = map(int, box.xyxy[0])
 
-                         # Apply 30-pixel margin with bounds checking
+                        # Dynamic margin based on face size
+                        face_width = x2 - x1
+                        face_height = y2 - y1
+                        margin = max(int(min(face_width, face_height) * 0.5), 30)
+
+                        # Margin clipping
                         x1m = max(x1 - margin, 0)
                         y1m = max(y1 - margin, 0)
                         x2m = min(x2 + margin, w)
@@ -101,28 +113,25 @@ try:
 
                         face_crop = frame[y1m:y2m, x1m:x2m]
 
-                        if face_crop.shape[0] > 30 and face_crop.shape[1] > 30:
+                        # Only process if large enough
+                        if face_crop.shape[0] > 60 and face_crop.shape[1] > 60:
                             try:
-                                # 2) DeepFace Emotion
                                 emotion_analysis = DeepFace.analyze(
                                     face_crop,
                                     actions=['emotion'],
-                                    detector_backend='opencv',
-                                    enforce_detection=False
+                                    detector_backend='skip',
+                                    enforce_detection=False,
                                 )
                                 emotion = emotion_analysis[0]['dominant_emotion']
 
-                                # 3) Encode the face_crop as JPEG
-                                success, encoded_face = cv2.imencode('.jpg', face_crop)
+                                success, encoded_face = cv2.imencode('.jpg', frame)
                                 if not success:
                                     print("⚠️ Could not encode face_crop.")
                                     continue
 
-                                # 4) Base64-encode to embed in JSON
                                 face_b64 = base64.b64encode(encoded_face).decode('utf-8')
-
-                                # 5) Prepare a single JSON payload
                                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
                                 payload = {
                                     "timestamp": timestamp,
                                     "bounding_box": [x1, y1, x2, y2],
@@ -130,14 +139,14 @@ try:
                                     "image_b64": face_b64
                                 }
 
-                                # 6) Publish the JSON payload
                                 client.publish(MQTT_TOPIC, json.dumps(payload))
                                 print(f"📤 Published: {list(payload.keys())}")
 
                             except Exception as e:
                                 print("⚠️ DeepFace Error:", e)
+
         else:
-            # Person is NOT close; ensure camera is OFF
+            # Nothing close; ensure camera is OFF
             if cap is not None:
                 print("No person. Releasing camera...")
                 cap.release()
@@ -148,6 +157,7 @@ try:
 except KeyboardInterrupt:
     print("Interrupted by user.")
 finally:
+    # Cleanup on exit
     if cap is not None:
         cap.release()
     GPIO.cleanup()

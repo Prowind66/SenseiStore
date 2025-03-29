@@ -27,7 +27,7 @@ def on_message(client, userdata, msg):
         latest_data["timestamp"] = payload["timestamp"]
         latest_data["emotion"] = payload["emotion"]
         latest_data["bounding_box"] = payload["bounding_box"]
-
+        
     except Exception as e:
         print("⚠️ Error decoding message:", e)
 

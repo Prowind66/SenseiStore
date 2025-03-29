@@ -1,5 +1,5 @@
 {% extends "includes/base_template.html" %}
-{% block title %} InfauxCheck {% endblock %}
+{% block title %} SenseiStore {% endblock %}
 
 {% block head %}
 <style>
@@ -37,6 +37,7 @@
     <div class="row">
     <div class="col-7">
         <h5 class="mb-3">Live Streaming</h5>
+        <img id="liveStream" src="" style="width:100%; max-width:640px; border-radius:10px;" />
     </div>
     <div class="col-5">
         <h5 class="mb-3" id="detectFaceText">Detected Faces</h5>
@@ -79,7 +80,7 @@
     </div>
     </div>  <!-- End Of Row -->
 
-    <div class="row">
+    <div class="row mt-2">
         <!-- Left Sidebar -->
         <!-- <div class="col-md-3 mb-4">
           <div class="list-group">
@@ -94,7 +95,7 @@
             <button class="list-group-item list-group-item-action">Pricing List</button>
           </div>
         </div> -->
-        <h3 class="mb-3">Products Recommendation</h3>
+        <h3 class="mb-3 mt-3">Products Recommendation</h3>
         <!-- Product Catalogue Grid -->
         <div class="col-md-12">
           <div class="row g-4" id="productsRecommendationContainer">
@@ -146,7 +147,7 @@
             detectedFaceTextSection.innerText = "Detected Faces (Detecting)";
             let timeStampLength = document.querySelectorAll('[id^="timestamp-"]').length;
             let emotionLength = document.querySelectorAll('[id^="emotion-"]').length;
-            let bboxLength = document.querySelectorAll('[id^="bbox-"]').length;
+            let bboxLength = document.querySelectorAll('[id^="confidence_score-"]').length;
             let faceImgLength = document.querySelectorAll('[id^="face-img"]').length;
             let i = Math.max(timeStampLength, emotionLength, bboxLength, faceImgLength);
 
@@ -158,8 +159,7 @@
                             <p class="m-0">Age: Young</p>
                             <p class="m-0">Gender: Male</p>
                             <p id="emotion-${i}" class="m-0">Expression: ${data.emotion || 'Unknown'}</p>
-                            <p class="m-0">Beard: No</p>
-                            <p id="bbox-${i}" class="m-0">Bounding Box: ${data.bounding_box || 'N/A'}</p>
+                            <p id="confidence_score-${i}" class="m-0">confidence_score: ${data.confidence_score || 'N/A'}</p>
                         </div>
                     </div>
                     <div class="timestamp" id="timestamp-${i}">${data.timestamp || 'Now'}</div>
@@ -170,6 +170,14 @@
             detectedFaceTextSection.innerText = "Detected Faces";
         });
 
+        const liveStream = document.getElementById("liveStream");
+
+        socket.on('stream_frame', (data) => {
+            console.log("testing:",data);
+            if (data.image_b64) {
+                liveStream.src = 'data:image/jpeg;base64,' + data.image_b64;
+            }
+        });
     </script>
 
 {% endblock %}
