@@ -71,13 +71,18 @@ class EmotionDetector:
                         y2m = min(y2 + margin, h)
                         face_crop = frame[y1m:y2m, x1m:x2m]
 
+                       
                         try:
+                            start_time = time.time()
                             emotion_analysis = DeepFace.analyze(
                                 face_crop,
                                 actions=['emotion'],
                                 detector_backend='skip',
                                 enforce_detection=True,
                             )
+                            end_time = time.time()
+                            deepface_duration = round((end_time - start_time) * 1000, 2)  # in milliseconds
+                            print(f"🧠 DeepFace analysis took {deepface_duration} ms")
                             emotion = emotion_analysis[0]['dominant_emotion']
                             success, encoded_face = cv2.imencode('.jpg', face_crop)
                             if not success:
