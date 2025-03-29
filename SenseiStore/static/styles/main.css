@@ -1,0 +1,15 @@
+body {
+    font-family: "Poppins", sans-serif;
+  }
+
+html {
+    scroll-behavior: smooth;
+}
+
+.min-h-screen {
+    min-height: 350px;
+}
+
+.max-h-screen {
+    max-height: 350px;
+}
