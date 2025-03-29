@@ -1,89 +1,137 @@
+import RPi.GPIO as GPIO
+import time
 import cv2
-import os
 import json
+import base64
+import threading
+import queue
 from datetime import datetime
 from ultralytics import YOLO
 from deepface import DeepFace
 import paho.mqtt.client as mqtt
 from paho.mqtt.client import CallbackAPIVersion
+from gpiozero import DistanceSensor
 
-# MQTT Configuration
-MQTT_BROKER = "192.168.40.75"  # Replace with your Laptop's IP
-MQTT_PORT = 1883
-MQTT_TOPIC = "camera/detection"
+class UltrasonicSensor:
+    def __init__(self, trig_pin, echo_pin):
+        self.sensor = DistanceSensor(echo=echo_pin, trigger=trig_pin,max_distance=2)
+    
+    def measure_distance(self):
+        dist_cm = self.sensor.distance * 100  # Convert to cm
+        return round(dist_cm, 2)
 
-# Initialize MQTT Client
-client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2, client_id="Publisher")
-client.connect(MQTT_BROKER, MQTT_PORT)
-client.loop_start()
+class EmotionDetector:
+    def __init__(self):
+        self.face_model = YOLO("yolov11n-face.pt")
+        self.client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2, client_id="Publisher")
+        self.client.connect("192.168.238.123", 1883)
+        self.client.loop_start()
+        self.mqtt_topic = ["camera/detection","camera/videostreaming"]
+        self.frame_queue = queue.Queue(maxsize=1)
+        self.running_flag = [True]
+        self.cap = None
+        self.min_confidence = 0.8
 
-# Create an "images" folder if it doesn't exist
-os.makedirs("images", exist_ok=True)
+    def camera_capture_thread(self,cap):
+        while self.running_flag[0]:
+            ret, frame = cap.read()
+            if ret and not self.frame_queue.full():
+                self.frame_queue.put(frame)
+            time.sleep(0.05)
 
-# Load YOLO model for face detection
-face_model = YOLO("yolov11n-face.pt")
-
-# Initialize webcam
-cap = cv2.VideoCapture(0)
-
-while cap.isOpened():
-    ret, frame = cap.read()
-    if not ret:
-        print("⚠️ Error: Unable to capture frame.")
-        break
-
-    # Run YOLO face detection
-    results = face_model(frame)
-    detected_faces = []  # List to store face bounding box coordinates
-    for result in results:
-        for box in result.boxes:
-            x1, y1, x2, y2 = map(int, box.xyxy[0])  # Extract face bounding box
-            detected_faces.append((x1, y1, x2, y2))  # Store detected face
-            # Crop detected face
-            face_crop = frame[y1:y2, x1:x2]
-
-            # Ensure the face is large enough before processing
-            if face_crop.shape[0] > 30 and face_crop.shape[1] > 30:
+    def processing_thread(self):
+        while True:
+            if not self.frame_queue.empty():
+                frame = self.frame_queue.get()
+                results = self.face_model(frame, imgsz=256)
+                # Publish current frame as image to camera/videostreaming
                 try:
-                    # Detect emotion using DeepFace
-                    emotion_analysis = DeepFace.analyze(face_crop, actions=['emotion'], detector_backend='opencv', enforce_detection=False)
-                    emotion = emotion_analysis[0]['dominant_emotion']
-
-                    # ✅ Draw bounding boxes and emotion label
-                    for (x1, y1, x2, y2) in detected_faces:
-                        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green Box
-                        cv2.putText(frame, emotion, (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                    # Generate a unique filename using timestamp
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    image_filename = f"images/face_{timestamp}.jpg"
-
-                    # Save the cropped face image
-                    cv2.imwrite(image_filename, frame)
-
-                    # Open and send raw image binary
-                    with open(image_filename, "rb") as img_file:
-                        image_binary = img_file.read()
-
-                    # Publish metadata JSON
-                    metadata = {
-                        "timestamp": timestamp,
-                        "emotion": emotion
-                    }
-                    client.publish(MQTT_TOPIC + "/metadata", json.dumps(metadata))
-                    print(f"📤 Sent Metadata: {metadata}")
-
-                    # Publish raw image separately
-                    client.publish(MQTT_TOPIC + "/image", image_binary)
-                    print("📤 Sent MQTT raw image data.")
-
+                    success, encoded_image = cv2.imencode('.jpg', frame)
+                    if success:
+                        image_b64 = base64.b64encode(encoded_image).decode('utf-8')
+                        image_payload = {
+                            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+                            "image_b64": image_b64
+                        }
+                    self.client.publish(self.mqtt_topic[1], json.dumps(image_payload))
                 except Exception as e:
-                    print("⚠️ DeepFace Error:", e)
+                    print("❌ Failed to publish image to MQTT:", e)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+                for result in results:
+                    for box in result.boxes:
+                        conf = round(box.conf[0].item(), 2)
+                        if conf < self.min_confidence:
+                            continue
+                        x1, y1, x2, y2 = map(int, box.xyxy[0])
+                        margin = 30
+                        h, w, _ = frame.shape
+                        x1m = max(x1 - margin, 0)
+                        y1m = max(y1 - margin, 0)
+                        x2m = min(x2 + margin, w)
+                        y2m = min(y2 + margin, h)
+                        face_crop = frame[y1m:y2m, x1m:x2m]
 
-cap.release()
-cv2.destroyAllWindows()
-client.loop_stop()
-client.disconnect()
+                        try:
+                            emotion_analysis = DeepFace.analyze(
+                                face_crop,
+                                actions=['emotion'],
+                                detector_backend='skip',
+                                enforce_detection=True,
+                            )
+                            emotion = emotion_analysis[0]['dominant_emotion']
+                            success, encoded_face = cv2.imencode('.jpg', face_crop)
+                            if not success:
+                                continue
+                            face_b64 = base64.b64encode(encoded_face).decode('utf-8')
+                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                            payload = {
+                                "timestamp": timestamp,
+                                "bounding_box": [x1, y1, x2, y2],
+                                "emotion": emotion,
+                                "image_b64": face_b64,
+                                "confidence_score" : conf
+                            }
+                            self.client.publish(self.mqtt_topic[0], json.dumps(payload))
+                            print(f"📤 Published: {list(payload.keys())}")
+
+                        except Exception as e:
+                            print("⚠️ DeepFace Error:", e)
+
+    def run(self, sensor, threshold_distance):
+        try:
+            threading.Thread(target=self.processing_thread, daemon=True).start()
+            while True:
+                dist = sensor.measure_distance()
+                print(f"Distance: {dist} cm")
+
+                if dist is not None and dist < threshold_distance:
+                    if self.cap is None:
+                        print("Person detected. Opening camera...")
+                        self.cap = cv2.VideoCapture(0)
+                        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                        threading.Thread(target=self.camera_capture_thread, args=(self.cap,), daemon=True).start()
+                else:
+                    if self.cap is not None:
+                        print("No person. Releasing camera...")
+                        self.running_flag[0] = False
+                        self.cap.release()
+                        self.cap = None
+                        self.running_flag[0] = True
+                time.sleep(0.4)
+        except KeyboardInterrupt:
+            print("Interrupted by user.")
+
+        finally:
+            self.running_flag[0] = False
+            if self.cap is not None:
+                self.cap.release()
+            GPIO.cleanup()
+            self.client.loop_stop()
+            self.client.disconnect()
+            print("Exiting gracefully...")
+
+if __name__ == '__main__':
+    sensor = UltrasonicSensor(23, 24)
+    detector = EmotionDetector()
+    detector.run(sensor, threshold_distance=80.0)
