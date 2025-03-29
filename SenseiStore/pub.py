@@ -22,7 +22,7 @@ class UltrasonicSensor:
 
 class EmotionDetector:
     def __init__(self):
-        self.face_model = YOLO("yolov11n-face.pt")
+        self.face_model = YOLO("model/yolov11n-face.pt")
         self.client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2, client_id="Publisher")
         self.client.connect("192.168.238.123", 1883)
         self.client.loop_start()
