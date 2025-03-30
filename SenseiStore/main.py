@@ -6,7 +6,7 @@ import json
 app = Flask(__name__)
 app.config['MQTT_BROKER_URL'] = '192.168.238.123'
 app.config['MQTT_BROKER_PORT'] = 1883
-app.config['MQTT_TOPICS'] = ['camera/detection', 'camera/videostreaming']
+app.config['MQTT_TOPICS'] = ['camera/detection', 'camera/videostreaming',"camera/softdrink"]
 
 mqtt = Mqtt(app)
 socketio = SocketIO(app)
@@ -23,6 +23,9 @@ def handle_mqtt_message(client, userdata, message):
         elif topic == 'camera/videostreaming':
             # Send the image to frontend (as base64)
             socketio.emit('stream_frame', payload)
+        elif topic == 'camera/softdrink':
+            # Send the image to frontend (as base64)
+            socketio.emit('softdrink', payload)
 
     except Exception as e:
         print("❌ Failed to process MQTT message:", e)

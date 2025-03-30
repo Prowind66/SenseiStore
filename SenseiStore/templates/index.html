@@ -135,6 +135,16 @@
       </div>
   </div>
 
+  <div class="col-5">
+    <h5 class="mb-3" id="detectFaceText">Detected Faces</h5>
+
+    <!-- Scrollable List -->
+    <div class="scroll-container">
+        <div class="d-flex flex-column overflow-auto  min-h-screen max-h-screen" id="softDrinkSection">
+      
+        </div> <!-- End Of D-flex -->
+    </div> <!-- End Of Scroll Container-->
+</div>
     
 
     <script>
@@ -156,8 +166,6 @@
                     <img id="face-img${i}" src="data:image/jpeg;base64,${data.image_b64 || ''}" class="profile-img me-3" alt="Profile Image" />
                     <div class="flex-grow-1">
                         <div class="meta-info">
-                            <p class="m-0">Age: Young</p>
-                            <p class="m-0">Gender: Male</p>
                             <p id="emotion-${i}" class="m-0">Expression: ${data.emotion || 'Unknown'}</p>
                             <p id="confidence_score-${i}" class="m-0">confidence_score: ${data.confidence_score || 'N/A'}</p>
                         </div>
@@ -178,6 +186,27 @@
                 liveStream.src = 'data:image/jpeg;base64,' + data.image_b64;
             }
         });
+
+        let softDrinkSection = document.getElementById("softDrinkSection");
+        socket.on('softdrink', (data) => {
+            let softDrinkImgLength = document.querySelectorAll('[id^="softdrink-img"]').length;
+            let i = Math.max(softDrinkImgLength);
+
+            let detectedSoftDrinkInfo = `
+                <div class="person-box d-flex align-items-center mb-3">
+                    <img id="softdrink-img${i}" src="data:image/jpeg;base64,${data.image_b64 || ''}" class="profile-img me-3" alt="Profile Image" />
+                    <div class="flex-grow-1">
+                        <div class="meta-info">
+                            <p id="object-${i}" class="m-0">object: ${data.object || 'Unknown'}</p>
+                            <p id="confidence_score-${i}" class="m-0">confidence_score: ${data.confidence_score || 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div class="timestamp" id="timestamp-${i}">${data.timestamp || 'Now'}</div>
+                </div>
+            `;  
+            softDrinkSection.insertAdjacentHTML("afterbegin", detectedSoftDrinkInfo);
+        });
+       
     </script>
 
 {% endblock %}
