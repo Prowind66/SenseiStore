@@ -23,7 +23,7 @@ class UltrasonicSensor:
 class MultiDetector:
     def __init__(self):
         self.face_model = YOLO("model/yolov11n-face.pt")
-        self.drink_model = YOLO("best.pt")
+        self.drink_model = YOLO("my_model.pt")
         self.client = mqtt.Client(callback_api_version=CallbackAPIVersion.VERSION2, client_id="Publisher")
         self.client.connect("192.168.238.123", 1883)
         self.client.loop_start()
@@ -34,6 +34,12 @@ class MultiDetector:
         self.min_confidence = 0.8
         self.previous_face = None
         self.previous_emotion = None
+        self.custom_names = {
+                0: {"name": "Osulloc Samdayeon Honey Pear Tea", "id": "160"},
+                1: {"name": "Monster Energy Can Drink - Mango Loco", "id": "147"},
+                2: {"name": "Pokka Bottle Drink - Jasmine Green Tea", "id": "3"},
+                3: {"name": "Schwepps Tonic", "id": "159"}
+            }
 
     def camera_capture_thread(self, cap):
         while self.running_flag[0]:
@@ -61,8 +67,9 @@ class MultiDetector:
                     print("❌ Failed to publish image stream:", e)
 
                 # 2. Face detection & emotion
+
                 results = self.face_model(frame, imgsz=256)
-                face_found = False
+                # face_found = False
 
                 for result in results:
                     for box in result.boxes:
@@ -78,18 +85,20 @@ class MultiDetector:
                         x2m = min(x2 + margin, w)
                         y2m = min(y2 + margin, h)
                         face_crop = frame[y1m:y2m, x1m:x2m]
+                        # crop_height, crop_width = face_crop.shape[:2]
+                        # print(f"🖼️ Face Crop Size: width = {crop_width}, height = {crop_height}")       
 
                         try:
-                            start_time = time.time()
+                            # start_time = time.time()
                             emotion_analysis = DeepFace.analyze(
                                 face_crop,
                                 actions=['emotion'],
                                 detector_backend='skip',
                                 enforce_detection=True,
                             )
-                            end_time = time.time()
-                            deepface_duration = round((end_time - start_time) * 1000, 2)
-                            print(f"🧠 DeepFace analysis took {deepface_duration} ms")
+                            # end_time = time.time()
+                            # deepface_duration = round((end_time - start_time) * 1000, 2)
+                            # print(f"🧠 DeepFace analysis took {deepface_duration} ms")
 
                             emotion = emotion_analysis[0]['dominant_emotion']
                             success, encoded_face = cv2.imencode('.jpg', face_crop)
@@ -100,28 +109,34 @@ class MultiDetector:
 
                             payload = {
                                 "timestamp": timestamp,
-                                # "bounding_box": [x1, y1, x2, y2],
                                 "emotion": emotion,
                                 "image_b64": face_b64,
                                 "confidence_score": conf
                             }
                             self.client.publish(self.mqtt_topic[0], json.dumps(payload))
-                            print(f"📤 Emotion published: {list(payload.keys())}")
-                            face_found = True
+                            # print(f"📤 Emotion published: {list(payload.keys())}")
+                            # face_found = True
 
                         except Exception as e:
                             print("⚠️ DeepFace Error:", e)
 
                 # 3. Softdrink detection (only if face was detected)
-                if face_found:
-                    drink_results = self.drink_model(frame,imgsz=128)
+                # if face_found:
+                try:
+                    drink_results = self.drink_model(frame,imgsz=256)
+
                     for result in drink_results:
                         for box in result.boxes:
-                            cls_id = int(box.cls[0])
-                            class_name = self.drink_model.names[cls_id]
+
                             conf = round(box.conf[0].item(), 2)
-                            if conf < 0.6:
+                            if conf < 0.8:
                                 continue
+                            cls_id = int(box.cls[0])
+                            class_info = self.custom_names.get(cls_id, {"name": f"Unknown-{cls_id}", "id": str(cls_id)})
+                            product_name = class_info["name"]
+                            product_id = class_info["id"]
+
+                            # print("class_name",class_name)
                             x1, y1, x2, y2 = map(int, box.xyxy[0])
                             drink_crop = frame[int(y1):int(y2), int(x1):int(x2)]
                             success, encoded_drink = cv2.imencode('.jpg', drink_crop)
@@ -131,12 +146,15 @@ class MultiDetector:
 
                             payload = {
                                 "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
-                                "object": class_name,
+                                "product_id": product_id,
+                                "product_name": product_name,
                                 "confidence_score": conf,
                                 "image_b64": drink_b64
                             }
                             self.client.publish(self.mqtt_topic[2], json.dumps(payload))
-                            print(f"🥤 Softdrink published: {class_name} ({conf})")
+                            print(f"🥤 Softdrink published: {product_name} ({conf})")
+                except Exception as e:
+                    print("⚠️ Softdrink Error:", e)
 
     def run(self, sensor, threshold_distance):
         try:

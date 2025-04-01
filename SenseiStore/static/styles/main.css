@@ -7,9 +7,19 @@ html {
 }
 
 .min-h-screen {
-    min-height: 350px;
+    min-height: 480px;
 }
 
 .max-h-screen {
-    max-height: 350px;
+    max-height: 480px;
+}
+
+.min-w-screen {
+    min-width: 100%;
+    min-height: 200px;
+}
+
+.max-w-screen {
+    max-width: 100%;
+    max-height: 200px;
 }

@@ -64,12 +64,12 @@ def download_image(image_url, folder_path,file_name):
     
 def get_beverages_contents(driver):
     # https://www.fairprice.com.sg/brand/f--n
-    base_url = "https://www.fairprice.com.sg/brand/f--n"
+    base_url = "https://www.fairprice.com.sg/brand/monster?srsltid=AfmBOoqFsp7kfje54lwWCpfMBxK5ofFwB5yFTCL_mv3i8IE2uy4JEEtA"
     driver.get(base_url)
 
-    product_id = 1
+    product_id = 143
     # product_name = ""
-    product_company = "Pokka"
+    product_company = "Monster"
     # product_original_price = ""
     # product_discounted_price = ""
     # product_image = ""
@@ -159,7 +159,7 @@ def get_beverages_contents(driver):
         })
         df = pd.DataFrame(product_list)
         csv_path = os.path.join(current_directory, "drinks_content.csv")
-        df.to_csv(csv_path, mode='a', header=False, index=False, encoding="utf-8-sig")
+        df.to_csv(csv_path, mode='a', header=False, index=False, encoding="utf-8-sig", sep=',')
 
 
 
