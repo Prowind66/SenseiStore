@@ -68,14 +68,10 @@ py main.py
 ```
 
 #### For MQTT Broker
-```bash
 Follow [PiBroker.md](PiBroker.md) for detailed hardware setup and ensure that you follow correctly
-```
 
 #### For MQTT Publisher:
-```bash
 Follow PiPublisher.md](PiPublisher.md) for detailed hardware setup and ensure that you follow correctly
-```
 
 ## Troubleshooting 
 1. **Connectivity Issues**:
