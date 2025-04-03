@@ -37,6 +37,7 @@ class MultiDetector:
         self.previous_emotion = None
         self.frame_counter = 0
         self.frame_skip = 3
+        # self.detection_interval = 10
         self.custom_names = {
                 0: {"name": "Osulloc Samdayeon Honey Pear Tea", "id": "160"},
                 1: {"name": "Monster Energy Can Drink - Mango Loco", "id": "147"},
@@ -69,8 +70,8 @@ class MultiDetector:
                 except Exception as e:
                     print("❌ Failed to publish image stream:", e)
 
-                if self.frame_counter % self.frame_skip != 0:
-                    continue
+                # if self.frame_counter % self.frame_skip != 0:
+                #     continue
                 # 2. Face detection & emotion
                 
                 results = self.face_model(frame, imgsz=256)
@@ -127,6 +128,10 @@ class MultiDetector:
 
                 # 3. Softdrink detection (only if face was detected)
                 # if face_found:
+                # if softdrink_counter < self.detection_interval:
+                    # continue  # skip softdrink detection this round
+                # softdrink_counter = 0  # reset after triggering
+
                 try:
                     drink_results = self.drink_model(frame,imgsz=256)
 
