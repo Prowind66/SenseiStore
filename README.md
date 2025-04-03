@@ -53,7 +53,30 @@ The system supports horizontal scaling by adding more publisher devices (Raspber
 6. Demand forecasting 
 7. Eye Gazing Detection
 8. Time Tracking
-   
+
+## Setup Instructions
+
+#### For Subscriber (To View The Website):
+```bash
+git clone https://github.com/your-username/SenseiStore.git
+cd SenseiStore
+python3 -m venv venv
+venv\Script\Activate # For Windows
+pip install -r requirements.txt
+cd SenseiStore
+py main.py
+```
+
+#### For MQTT Broker
+```bash
+Follow [PiBroker.md](PiBroker.md) for detailed hardware setup and ensure that you follow correctly
+```
+
+#### For MQTT Publisher:
+```bash
+Follow PiPublisher.md](PiPublisher.md) for detailed hardware setup and ensure that you follow correctly
+```
+
 ## Troubleshooting 
 1. **Connectivity Issues**:
    - Verify all devices are on the same network or can route to each other (Connected To Same Hotspot, ip route...etc)
