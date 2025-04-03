@@ -8,13 +8,13 @@ SenseiStore is an AI-powered Interactive Retail Solution that can help enhance c
 4. Text-to-Speech Alerts: Plays voice messages to assist or recommend products.
 
 ## System Architecture
-![AI-powered Interactive Retail Solution System Architecture](docs/system-architecture.png)
+![AI-powered Interactive Retail Solution System Architecture](SenseiStore/static/images/system-architecture.jpg)
 - Ultrasonic Sensor detects customer presence and triggers camera activation.
 - Raspberry Pi 400 (Publisher) captures images using the Logitech Webcam, analyzes emotions and detects soft drink items.
 - Sends data to Raspberry Pi 400 (Broker) via MQTT.
 - Laptop/Desktop (Subscriber) processes data and makes product recommendations.
 - Recommendations are displayed and announced via a Built-in Speaker.
-- 
+  
 ## Models Experimented
 | Model             | Purpose         | Total Inference Time Per Frame|
 |-------------------|-----------------|-------------|
