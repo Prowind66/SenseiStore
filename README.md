@@ -71,7 +71,7 @@ py main.py
 Follow [PiBroker.md](PiBroker.md) for detailed hardware setup and ensure that you follow correctly
 
 #### For MQTT Publisher:
-Follow PiPublisher.md](PiPublisher.md) for detailed hardware setup and ensure that you follow correctly
+Follow [PiPublisher.md](PiPublisher.md) for detailed hardware setup and ensure that you follow correctly
 
 ## Troubleshooting 
 1. **Connectivity Issues**:
