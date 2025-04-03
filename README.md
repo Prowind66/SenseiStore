@@ -66,7 +66,12 @@ The system supports horizontal scaling by adding more publisher devices (Raspber
 
 3. **Raspiberry PI 400 Set Up**:
    - See [PiBroker.md](PiBroker.md) or [PiPublisher.md](PiPublisher.md) for detailed hardware setup and ensure that you follow correctly
-     
+
+4. **Check IP Addresses Of Devices**:
+   - Sometimes When connecting to your own hotspot , the ip addresses may change due to DHCP
+   - Download Net Analyzer Application to find out your connected devices IP Addresses
+   - Change the ip address of your code , if you notice there is a change of Ip address
+   
 ## Risk Assessment and Mitigation
 | Potential Risks/Challenges  | Mitigation Strategy |
 | -------------      | ------------- |
