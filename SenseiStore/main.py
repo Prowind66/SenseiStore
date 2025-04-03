@@ -154,10 +154,10 @@ def handle_mqtt_message(client, userdata, message):
                     first_item = recommended_items[0]['Product']
                     threading.Thread(target=speak_recommendation, args=(payload['emotion'], first_item), daemon=True).start()
             socketio.emit('mqtt_message', payload)
-        elif topic == 'camera/videostreaming':
+        if topic == 'camera/videostreaming':
             # Send the image to frontend (as base64)
             socketio.emit('stream_frame', payload)
-        elif topic == 'camera/softdrink':
+        if topic == 'camera/softdrink':
             socketio.emit('softdrink', payload)
 
             product_id = payload['product_id']
@@ -166,10 +166,11 @@ def handle_mqtt_message(client, userdata, message):
             product_row = product_df[product_df['product_id'].astype(str) == product_id]
             if not product_row.empty:
                 brand = product_row['product_company'].values[0]
-                # print("product_company:",brand)
+                print("product_company:",brand)
 
                 if should_recommend_brand(brand) and should_speak():
                     brand_recommendations = get_brand_recommendations(product_id)
+                    # print(brand_recommendations)
                     socketio.emit('product_recommendation', {
                         "product_id": product_id,
                         "brand": brand,

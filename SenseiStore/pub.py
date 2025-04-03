@@ -15,6 +15,7 @@ from gpiozero import DistanceSensor
 class UltrasonicSensor:
     def __init__(self, trig_pin, echo_pin):
         self.sensor = DistanceSensor(echo=echo_pin, trigger=trig_pin, max_distance=2)
+        self.threshold_distance = 80
 
     def measure_distance(self):
         dist_cm = self.sensor.distance * 100
@@ -34,6 +35,8 @@ class MultiDetector:
         self.min_confidence = 0.8
         self.previous_face = None
         self.previous_emotion = None
+        self.frame_counter = 0
+        self.frame_skip = 3
         self.custom_names = {
                 0: {"name": "Osulloc Samdayeon Honey Pear Tea", "id": "160"},
                 1: {"name": "Monster Energy Can Drink - Mango Loco", "id": "147"},
@@ -51,8 +54,8 @@ class MultiDetector:
     def processing_thread(self):
         while True:
             if not self.frame_queue.empty():
-                frame = self.frame_queue.get()
-
+                frame = self.frame_queue.get()  
+                self.frame_counter += 1
                 # 1. Publish live video stream
                 try:
                     success, encoded_image = cv2.imencode('.jpg', frame)
@@ -66,8 +69,10 @@ class MultiDetector:
                 except Exception as e:
                     print("❌ Failed to publish image stream:", e)
 
+                if self.frame_counter % self.frame_skip != 0:
+                    continue
                 # 2. Face detection & emotion
-
+                
                 results = self.face_model(frame, imgsz=256)
                 # face_found = False
 
@@ -170,7 +175,7 @@ class MultiDetector:
                         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
                         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
                         self.cap.set(cv2.CAP_PROP_FPS, 30)
-                        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)  
+                        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 3)  
                         threading.Thread(target=self.camera_capture_thread, args=(self.cap,), daemon=True).start()
                 else:
                     if self.cap is not None:

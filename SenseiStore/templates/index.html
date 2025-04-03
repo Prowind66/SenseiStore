@@ -215,6 +215,30 @@
             softDrinkSection.insertAdjacentHTML("afterbegin", detectedSoftDrinkInfo);
         });
        
+        socket.on('product_recommendation', (data) => {
+          const recommendations = data.recommendations
+          console.log(recommendations);
+          emotionProductsRecommendations.innerHTML = '';
+          recommendations.forEach(item => {
+            const productCard = `
+              <div class="col-sm-6 col-md-4">
+                <div class="card shadow-sm h-100">
+                  <img src="${item.Product_Image_Url}" class="card-img-top" alt="${item.Product}">
+                  <div class="card-body">
+                    <h6 class="card-title mb-1">${item.Product}</h6>
+                    <p class="card-text text-muted">$${item.Unit_Price.toFixed(2)}</p>
+                  </div>
+                </div>
+              </div>
+            `;
+            emotionProductsRecommendations.insertAdjacentHTML('beforeend', productCard);
+
+            window.scrollTo({
+              top: emotionProductsRecommendations.offsetTop - 50,
+              behavior: 'smooth'
+            });
+          });
+        });
     </script>
 
 {% endblock %}
