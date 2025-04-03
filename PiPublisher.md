@@ -49,3 +49,33 @@ This documents provides information about the Publisher Set Up
 3. cd to the directory and pip install the packages from requirements.txt
 4. python3 pub.py
 Note: You Should Create An Virutal Environment To Manage These Packages
+
+## 1. Clone The Repository
+```
+git clone https://github.com/your-username/SenseiStore.git
+cd SenseiStore
+```
+## 2. Create a Python Virtual Environment (Recommended)
+```
+python3 -m venv venv
+source venv/bin/activate  # For Linux/macOS
+```
+
+##  3. Install Publisher Requirements
+```
+pip install -r publisher_requirements.txt
+```
+
+## Run the publisher Script
+```
+cd SenseiStore
+python3 pub.py
+```
+
+## Troubleshooting
+| Issue     | Possible Cause | Solution |
+|------------|------------------|-------------|
+| Ultrasonic sensor not detecting presence        | Loose or incorrect wiring to TRIG/ECHO pins       | Double-check connections: Refer To The Wiring Connections Section |
+| Camera not detected or showing black screen       | USB port issue or permission error | Run lsusb to verify detection , sudo apt install fswebcam . 
+| Script pub.py throws ModuleNotFoundError       | Virtual environment not activated or packages not installed | Activate the virtual environment: source venv/bin/activate or Install requirements: pip install -r publisher_requirements.txt|
+| Port busy" or "Resource unavailable" error        | Camera or GPIO resource not released properly   | Reboot the Raspberry Pi and Make sure no other scripts are using the camera or GPIOs  |
